@@ -1,0 +1,41 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>WARP WML → HTML Converter</title>
+  <style type="text/css">
+    /* Simple, wide-compatible styling (works in IE6+) */
+    body { font-family: Arial, Helvetica, sans-serif; margin: 20px; }
+    .container { width: 520px; margin: 0 auto; }
+    label { display: block; margin-bottom: 6px; font-weight: bold; }
+    input[type="text"] { width: 100%; padding: 6px; font-size: 14px; }
+    input[type="submit"] { margin-top: 10px; padding: 6px 12px; font-size: 14px; }
+    .hint { font-size: 12px; color: #333; margin-top: 10px; }
+  </style>
+  <script type="text/javascript">
+    // Basic client-side validation compatible with old browsers (IE6+)
+    function validateForm() {
+      var el = document.getElementById('wml_text');
+      if (!el) { return true; }
+      // trim (simple)
+      var val = el.value.replace(/^\s+|\s+$/g, '');
+      if (val.length === 0) {
+        try { alert('Please a domain before submitting.'); } catch(e) {}
+        el.focus();
+        return false;
+      }
+      return true; // allow the form to submit
+    }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>Warp</h1>
+    <form action="/wml_to_html" method="get" accept-charset="UTF-8" onsubmit="return validateForm();">
+      <label for="wml_url">Enter a domain:</label>
+      <input type="text" id="wml_url" name="wml_url" value="" />
+      <input type="submit" value="Convert" />
+    </form>
+  </div>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WML Cards Simulation</title>
+  <style>
+    .card { display: none; }
+    .active { display: block; }
+  </style>
+  <script>
+    // simple function to show one card at a time
+    function showCard(id) {
+      var cards = document.getElementsByTagName('div');
+      for (var i = 0; i < cards.length; i++) {
+        if (cards[i].className.indexOf('card') >= 0) {
+          cards[i].className = 'card'; // hide all
+        }
+      }
+      var current = document.getElementById(id);
+      if (current) current.className = 'card active';
+      location.hash = id; // for bookmarking/back support
+    }
+
+    // detect hash change (basic IE6–7 fallback via timer)
+    function startHashListener() {
+      var oldHash = '';
+      setInterval(function() {
+        var newHash = location.hash.replace('#', '');
+        if (newHash !== oldHash) {
+          oldHash = newHash;
+          showCard(newHash || 'card1');
+        }
+      }, 200);
+    }
+
+    window.onload = function() {
+      startHashListener();
+      showCard(location.hash.replace('#', '') || 'card1');
+    };
+  </script>
+</head>
+<body>
+  {% for card in document.cards %}
+  <div id="{{card.id}}" class="card">
+    {{ card.contentsHtmlText }}
+  </div>
+  {% endfor %}
+</body>
+</html>
