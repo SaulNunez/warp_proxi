@@ -1,0 +1,19 @@
+[project]
+name = "warp-proxi"
+version = "0.1.0"
+description = "Browse WAP site from a regular web browser."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "flask[async]",
+    "httpx",
+    "jinja2",
+    "warp",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+warp = { git = "https://github.com/SaulNunez/warp.git" }
