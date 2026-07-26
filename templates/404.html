@@ -1,0 +1,63 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>404 Not Found - WARP Proxi</title>
+  <style type="text/css">
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: #f2f2f2;
+      margin: 0;
+      padding: 20px;
+      color: #333333;
+    }
+    .wrapper {
+      width: 500px;
+      margin: 40px auto;
+      background-color: #ffffff;
+      border: 1px solid #cccccc;
+      padding: 20px;
+      text-align: center;
+    }
+    h1 {
+      color: #cc0000;
+      font-size: 22px;
+      margin-top: 0;
+    }
+    p {
+      font-size: 14px;
+      color: #555555;
+      margin-bottom: 20px;
+    }
+    .url-box {
+      font-family: monospace;
+      background-color: #eeeeee;
+      padding: 6px 10px;
+      border: 1px solid #dddddd;
+      word-break: break-all;
+      margin-bottom: 20px;
+    }
+    .btn-back {
+      display: inline-block;
+      background-color: #005588;
+      color: #ffffff;
+      padding: 8px 16px;
+      text-decoration: none;
+      font-size: 14px;
+      border: 1px solid #003366;
+      cursor: pointer;
+    }
+    .btn-back:hover {
+      background-color: #003366;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <h1>Error 404</h1>
+    <p>Could not find this page or the target domain is unreachable.</p>
+    <div class="url-box">{{ url }}</div>
+    <a href="javascript:history.back()" class="btn-back">&laquo; Go Back</a>
+  </div>
+</body>
+</html>

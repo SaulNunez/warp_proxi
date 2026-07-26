@@ -1,48 +1,179 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="en">
 <head>
-  <title>WML Cards Simulation</title>
-  <style>
-    .card { display: none; }
-    .active { display: block; }
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>WML Browser - WARP Proxi</title>
+  <style type="text/css">
+    /* IE6+ Compatible CSS */
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: #f2f2f2;
+      margin: 0;
+      padding: 20px;
+      color: #333333;
+    }
+    .wrapper {
+      width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border: 1px solid #cccccc;
+      padding: 15px;
+    }
+    .header {
+      border-bottom: 2px solid #005588;
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 20px;
+      color: #005588;
+    }
+    .header a {
+      font-size: 12px;
+      color: #005588;
+      text-decoration: underline;
+    }
+    .card {
+      display: none;
+    }
+    .card-active {
+      display: block;
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: bold;
+      background-color: #e6f2ff;
+      padding: 6px 10px;
+      margin-top: 0;
+      margin-bottom: 10px;
+      border-left: 4px solid #005588;
+    }
+    .card-content {
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+    }
+    table, th, td {
+      border: 1px solid #bbbbbb;
+    }
+    td {
+      padding: 5px;
+    }
+    .wml-do-btn {
+      background-color: #005588;
+      color: #ffffff;
+      border: 1px solid #003366;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      margin: 4px 2px;
+    }
+    a.wml-action-go, a.wml-action-prev, a.wml-action-refresh {
+      display: inline-block;
+      background-color: #eeeeee;
+      border: 1px solid #aaaaaa;
+      color: #333333;
+      padding: 2px 8px;
+      text-decoration: none;
+      font-size: 12px;
+      margin-left: 4px;
+    }
+    fieldset {
+      border: 1px solid #cccccc;
+      padding: 10px;
+      margin: 10px 0;
+    }
+    legend {
+      font-weight: bold;
+    }
   </style>
-  <script>
-    // simple function to show one card at a time
-    function showCard(id) {
-      var cards = document.getElementsByTagName('div');
-      for (var i = 0; i < cards.length; i++) {
-        if (cards[i].className.indexOf('card') >= 0) {
-          cards[i].className = 'card'; // hide all
+
+  <script type="text/javascript">
+    // IE6+ Compatible JavaScript for WML Card Navigation and Timers
+    function showCard(cardId) {
+      var divs = document.getElementsByTagName('div');
+      var firstCardId = '';
+      
+      for (var i = 0; i < divs.length; i++) {
+        var className = divs[i].className || '';
+        if (className.indexOf('card ') === 0 || className === 'card' || className.indexOf('card-active') >= 0) {
+          if (!firstCardId) {
+            firstCardId = divs[i].id;
+          }
+          divs[i].className = 'card';
         }
       }
-      var current = document.getElementById(id);
-      if (current) current.className = 'card active';
-      location.hash = id; // for bookmarking/back support
+
+      var targetId = cardId || firstCardId;
+      var targetCard = document.getElementById(targetId);
+      if (targetCard) {
+        targetCard.className = 'card card-active';
+        handleCardTimer(targetCard);
+      }
     }
 
-    // detect hash change (basic IE6–7 fallback via timer)
-    function startHashListener() {
-      var oldHash = '';
-      setInterval(function() {
-        var newHash = location.hash.replace('#', '');
-        if (newHash !== oldHash) {
-          oldHash = newHash;
-          showCard(newHash || 'card1');
+    function handleCardTimer(cardElem) {
+      var inputs = cardElem.getElementsByTagName('input');
+      for (var i = 0; i < inputs.length; i++) {
+        if (inputs[i].className === 'wml-timer') {
+          var val = parseInt(inputs[i].value, 10);
+          if (!isNaN(val) && val > 0) {
+            // WML timers are specified in tenths of a second
+            var ms = val * 100;
+            setTimeout(function() {
+              var onevents = cardElem.getElementsByTagName('div');
+              for (var j = 0; j < onevents.length; j++) {
+                if (onevents[j].className.indexOf('wml-onevent-ontimer') >= 0) {
+                  var links = onevents[j].getElementsByTagName('a');
+                  if (links.length > 0) {
+                    window.location.href = links[0].href;
+                  }
+                }
+              }
+            }, ms);
+          }
         }
-      }, 200);
+      }
+    }
+
+    function startHashPoll() {
+      var currentHash = '';
+      setInterval(function() {
+        var rawHash = location.hash ? location.hash.substring(1) : '';
+        if (rawHash !== currentHash) {
+          currentHash = rawHash;
+          showCard(currentHash);
+        }
+      }, 150);
     }
 
     window.onload = function() {
-      startHashListener();
-      showCard(location.hash.replace('#', '') || 'card1');
+      startHashPoll();
+      var initialCard = location.hash ? location.hash.substring(1) : '';
+      showCard(initialCard);
     };
   </script>
 </head>
 <body>
-  {% for card in document.cards %}
-  <div id="{{card.id}}" class="card">
-    {{ card.contentsHtmlText }}
+  <div class="wrapper">
+    <div class="header">
+      <a href="/">&laquo; Back to WML Proxi Home</a>
+      <h1>WML Document</h1>
+    </div>
+
+    {% for card in document.cards %}
+    <div id="{{ card.id }}" class="card">
+      {% if card.title %}
+      <div class="card-title">{{ card.title }}</div>
+      {% endif %}
+      {{ card.contentsHtmlText | safe }}
+    </div>
+    {% endfor %}
   </div>
-  {% endfor %}
 </body>
 </html>

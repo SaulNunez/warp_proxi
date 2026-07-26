@@ -1,13 +1,14 @@
 import traceback
 from contextlib import asynccontextmanager
 import httpx
-from fastapi import FastAPI, Request, Query, Depends, HTTPException, status
+from fastapi import FastAPI, Request, Query, Depends, status
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from html_render.service import process_wap_text
 from wap_request.wap_request import get_httpx_client, close_httpx_client, request_wap
+from wap_request.url_utils import ensure_http_scheme
 
 
 @asynccontextmanager
@@ -34,19 +35,30 @@ async def convert(
     wml_url: str = Query(..., description="WML URL to convert"),
     client: httpx.AsyncClient = Depends(get_httpx_client),
 ):
+    formatted_url = ensure_http_scheme(wml_url)
     try:
-        status_code, text = await request_wap(client, wml_url)
-        representation = process_wap_text(text)
+        status_code, text = await request_wap(client, formatted_url)
+        if status_code >= 400:
+            return templates.TemplateResponse(
+                request=request,
+                name="404.html",
+                context={"url": formatted_url},
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        representation = process_wap_text(text, base_url=formatted_url)
         return templates.TemplateResponse(
             request=request,
             name="convert.html",
             context={"document": representation},
         )
-    except Exception as e:
+    except (httpx.RequestError, httpx.HTTPError, Exception) as e:
         traceback.print_exc()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Server Error",
+        return templates.TemplateResponse(
+            request=request,
+            name="404.html",
+            context={"url": formatted_url},
+            status_code=status.HTTP_404_NOT_FOUND,
         )
 
 
