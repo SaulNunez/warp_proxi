@@ -1,25 +1,40 @@
-import sys
 import traceback
-from flask import Flask, request, render_template
+from fastapi import FastAPI, Request, Query, HTTPException, status
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
 from html_render.service import process_wap_request
 
-app = Flask(__name__)
+app = FastAPI()
 
-@app.route('/')
-def root():
-  return app.send_static_file('index.html')
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-@app.route('/wml_to_html')
-async def convert():
-    if "wml_url" not in request.args:
-      return "Bad request: 'wml_url' not available in request query", 400
+templates = Jinja2Templates(directory="templates")
+
+
+@app.get("/", response_class=FileResponse)
+async def root():
+    return FileResponse("static/index.html")
+
+
+@app.get("/wml_to_html", response_class=HTMLResponse)
+async def convert(request: Request, wml_url: str = Query(..., description="WML URL to convert")):
     try:
-      url = request.args["wml_url"]
-      representation = await process_wap_request(url)
-      return render_template("convert.html", document=representation)
-    except:
-       traceback.print_exc()
-       return "Server Error", 500
+        representation = await process_wap_request(wml_url)
+        return templates.TemplateResponse(
+            request=request,
+            name="convert.html",
+            context={"document": representation},
+        )
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server Error",
+        )
+
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    import uvicorn
+    uvicorn.run("warp_proxi:app", host="0.0.0.0", port=5000, reload=True)
