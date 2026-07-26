@@ -1,27 +1,24 @@
-import asyncio
+import httpx
+
+_HEADERS = {'Accept': 'text/vnd.wap.wml'}
+
+_client: httpx.AsyncClient | None = None
 
 
-try:
-    import httpx
-    _HAS_HTTPX = True
-except Exception:
-    import requests
-    _HAS_HTTPX = False
+def get_httpx_client() -> httpx.AsyncClient:
+    global _client
+    if _client is None or _client.is_closed:
+        _client = httpx.AsyncClient(timeout=10.0)
+    return _client
 
-_headers = {'Accept': 'text/vnd.wap.wml'}
 
-async def request_wap(url: str):
-    if _HAS_HTTPX:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(url, headers=_headers)
-            text = resp.text
-            status = resp.status_code
-    else:
-        loop = asyncio.get_event_loop()
+async def close_httpx_client():
+    global _client
+    if _client is not None and not _client.is_closed:
+        await _client.aclose()
+        _client = None
 
-        def blocking_get(u):
-            r = requests.get(u, headers=_headers, timeout=10.0)
-            return r.status_code, r.text
 
-        status, text = await loop.run_in_executor(None, blocking_get, url)
-    return (status, text)
+async def request_wap(client: httpx.AsyncClient, url: str) -> tuple[int, str]:
+    resp = await client.get(url, headers=_HEADERS)
+    return resp.status_code, resp.text

@@ -1,12 +1,10 @@
 import os
 import socket
 from typing import List
-import xml
 
 from html_render.link_creator import ProxiLinkCreator
 from html_render.models import CardInformation, WmlDocumentInformation
 from html_render.render import RenderToHtml
-from wap_request.wap_request import request_wap
 from warp.wml import parse_from_string
 
 def get_system_ip_address() -> str:
@@ -18,8 +16,7 @@ def get_system_ip_address() -> str:
 
 host = os.environ.get("HOST_DOMAIN", get_system_ip_address())
 
-async def process_wap_request(url: str) -> WmlDocumentInformation:
-    status, text = await request_wap(url)
+def process_wap_text(text: str) -> WmlDocumentInformation:
     page = parse_from_string(text)
       
     link_creator = ProxiLinkCreator(host)

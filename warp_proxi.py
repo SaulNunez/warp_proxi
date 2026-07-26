@@ -1,12 +1,22 @@
 import traceback
-from fastapi import FastAPI, Request, Query, HTTPException, status
+from contextlib import asynccontextmanager
+import httpx
+from fastapi import FastAPI, Request, Query, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from html_render.service import process_wap_request
+from html_render.service import process_wap_text
+from wap_request.wap_request import get_httpx_client, close_httpx_client, request_wap
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    await close_httpx_client()
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -19,9 +29,14 @@ async def root():
 
 
 @app.get("/wml_to_html", response_class=HTMLResponse)
-async def convert(request: Request, wml_url: str = Query(..., description="WML URL to convert")):
+async def convert(
+    request: Request,
+    wml_url: str = Query(..., description="WML URL to convert"),
+    client: httpx.AsyncClient = Depends(get_httpx_client),
+):
     try:
-        representation = await process_wap_request(wml_url)
+        status_code, text = await request_wap(client, wml_url)
+        representation = process_wap_text(text)
         return templates.TemplateResponse(
             request=request,
             name="convert.html",
