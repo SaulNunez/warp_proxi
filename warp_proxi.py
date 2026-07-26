@@ -50,7 +50,7 @@ async def convert(
         return templates.TemplateResponse(
             request=request,
             name="convert.html",
-            context={"document": representation},
+            context={"document": representation, "current_wml_url": formatted_url},
         )
     except (httpx.RequestError, httpx.HTTPError, Exception) as e:
         traceback.print_exc()

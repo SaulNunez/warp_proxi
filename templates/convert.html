@@ -94,7 +94,199 @@
   </style>
 
   <script type="text/javascript">
-    // IE6+ Compatible JavaScript for WML Card Navigation and Timers
+    // IE6+ Compatible JavaScript for WML Navigation, Input Variables & Postfield String Interpolation
+    
+    var currentWmlUrl = "{{ current_wml_url | safe }}";
+    var wmlVariables = {};
+
+    function collectInputVariables(containerElem) {
+      if (!containerElem) return;
+      var inputs = containerElem.getElementsByTagName('input');
+      for (var i = 0; i < inputs.length; i++) {
+        var inp = inputs[i];
+        if (inp.name) {
+          wmlVariables[inp.name] = inp.value || '';
+        }
+      }
+      var selects = containerElem.getElementsByTagName('select');
+      for (var s = 0; s < selects.length; s++) {
+        var sel = selects[s];
+        if (sel.name) {
+          wmlVariables[sel.name] = sel.value || '';
+        }
+      }
+    }
+
+    function interpolateValue(rawVal) {
+      if (!rawVal) return '';
+      return rawVal.replace(/\$\(([^)]+)\)|\$([a-zA-Z0-9_]+)/g, function(match, p1, p2) {
+        var varName = p1 || p2;
+        return wmlVariables[varName] !== undefined ? wmlVariables[varName] : '';
+      });
+    }
+
+    function extractWmlUrlFromProxy(proxyHref) {
+      if (!proxyHref) return '';
+      var idx = proxyHref.indexOf('wml_url=');
+      if (idx < 0) return '';
+      var paramVal = proxyHref.substring(idx + 8);
+      var ampIdx = paramVal.indexOf('&');
+      if (ampIdx >= 0) {
+        paramVal = paramVal.substring(0, ampIdx);
+      }
+      try {
+        return decodeURIComponent(paramVal);
+      } catch (e) {
+        return paramVal;
+      }
+    }
+
+    function resolveAbsoluteUrl(base, relative) {
+      if (!relative) return base;
+      if (relative.indexOf('://') >= 0 || relative.indexOf('//') === 0) return relative;
+      if (relative.indexOf('#') === 0) return relative;
+
+      var scheme = 'http://';
+      var schemeIdx = base.indexOf('://');
+      if (schemeIdx >= 0) {
+        scheme = base.substring(0, schemeIdx + 3);
+        base = base.substring(schemeIdx + 3);
+      }
+
+      var qIdx = base.indexOf('?');
+      if (qIdx >= 0) {
+        base = base.substring(0, qIdx);
+      }
+
+      var host = base;
+      var path = '/';
+      var slashIdx = base.indexOf('/');
+      if (slashIdx >= 0) {
+        host = base.substring(0, slashIdx);
+        path = base.substring(slashIdx);
+      }
+
+      if (relative.indexOf('/') === 0) {
+        return scheme + host + relative;
+      }
+
+      var relQuery = '';
+      var relQIdx = relative.indexOf('?');
+      if (relQIdx >= 0) {
+        relQuery = relative.substring(relQIdx);
+        relative = relative.substring(0, relQIdx);
+      }
+
+      var dirPath = '/';
+      var lastSlash = path.lastIndexOf('/');
+      if (lastSlash >= 0) {
+        dirPath = path.substring(0, lastSlash + 1);
+      }
+
+      var fullPath = dirPath + relative;
+      var parts = fullPath.split('/');
+      var stack = [];
+
+      for (var i = 0; i < parts.length; i++) {
+        var p = parts[i];
+        if (p === '' || p === '.') {
+          continue;
+        } else if (p === '..') {
+          if (stack.length > 0) {
+            stack.pop();
+          }
+        } else {
+          stack.push(p);
+        }
+      }
+
+      return scheme + host + '/' + stack.join('/') + relQuery;
+    }
+
+    function resolveProxyUrl(linkElem) {
+      var hrefAttr = linkElem.getAttribute('href') || '';
+      var rawHref = linkElem.getAttribute('data-raw-href') || hrefAttr || '';
+      var postfieldsStr = linkElem.getAttribute('data-postfields') || '';
+
+      if (!hrefAttr && !rawHref) return '#';
+
+      var absoluteTargetUrl = '';
+
+      // First check if the rendered href is already a complete proxy URL containing an absolute wml_url
+      if (hrefAttr.indexOf('wml_url=') >= 0) {
+        var extracted = extractWmlUrlFromProxy(hrefAttr);
+        if (extracted && (extracted.indexOf('http://') === 0 || extracted.indexOf('https://') === 0)) {
+          absoluteTargetUrl = extracted;
+        }
+      }
+
+      // If not resolved yet, check rawHref or fall back to resolving against currentWmlUrl
+      if (!absoluteTargetUrl) {
+        if (rawHref.indexOf('wml_url=') >= 0) {
+          absoluteTargetUrl = extractWmlUrlFromProxy(rawHref);
+        } else {
+          absoluteTargetUrl = resolveAbsoluteUrl(currentWmlUrl, rawHref);
+        }
+      }
+
+      if (!absoluteTargetUrl) {
+        absoluteTargetUrl = resolveAbsoluteUrl(currentWmlUrl, rawHref);
+      }
+
+      var queryParams = [];
+      if (postfieldsStr) {
+        var fields = postfieldsStr.split(';');
+        for (var i = 0; i < fields.length; i++) {
+          var parts = fields[i].split('=');
+          if (parts.length >= 2) {
+            var pName = parts[0];
+            var pRawVal = parts.slice(1).join('=');
+            var interpolatedVal = interpolateValue(pRawVal);
+            queryParams.push(encodeURIComponent(pName) + '=' + encodeURIComponent(interpolatedVal));
+          }
+        }
+      }
+
+      var finalTargetUrl = absoluteTargetUrl;
+      if (queryParams.length > 0) {
+        var sep = finalTargetUrl.indexOf('?') >= 0 ? '&' : '?';
+        finalTargetUrl = finalTargetUrl + sep + queryParams.join('&');
+      }
+
+      return '/wml_to_html?wml_url=' + encodeURIComponent(finalTargetUrl);
+    }
+
+    function bindDynamicLinks(cardElem) {
+      var links = cardElem.getElementsByTagName('a');
+      for (var i = 0; i < links.length; i++) {
+        (function(link) {
+          var rawHref = link.getAttribute('data-raw-href') || link.getAttribute('href');
+
+          link.onclick = function() {
+            collectInputVariables(cardElem);
+            if (rawHref && rawHref.indexOf('javascript:') !== 0 && rawHref.indexOf('#') !== 0) {
+              var finalProxyUrl = resolveProxyUrl(link);
+              window.location.href = finalProxyUrl;
+              return false;
+            }
+          };
+        })(links[i]);
+      }
+
+      var buttons = cardElem.getElementsByTagName('button');
+      for (var b = 0; b < buttons.length; b++) {
+        (function(btn) {
+          btn.onclick = function() {
+            collectInputVariables(cardElem);
+            var innerLink = btn.getElementsByTagName('a')[0];
+            if (innerLink) {
+              innerLink.click();
+            }
+          };
+        })(buttons[b]);
+      }
+    }
+
     function showCard(cardId) {
       var divs = document.getElementsByTagName('div');
       var firstCardId = '';
@@ -113,6 +305,7 @@
       var targetCard = document.getElementById(targetId);
       if (targetCard) {
         targetCard.className = 'card card-active';
+        bindDynamicLinks(targetCard);
         handleCardTimer(targetCard);
       }
     }
@@ -123,7 +316,6 @@
         if (inputs[i].className === 'wml-timer') {
           var val = parseInt(inputs[i].value, 10);
           if (!isNaN(val) && val > 0) {
-            // WML timers are specified in tenths of a second
             var ms = val * 100;
             setTimeout(function() {
               var onevents = cardElem.getElementsByTagName('div');
@@ -131,7 +323,7 @@
                 if (onevents[j].className.indexOf('wml-onevent-ontimer') >= 0) {
                   var links = onevents[j].getElementsByTagName('a');
                   if (links.length > 0) {
-                    window.location.href = links[0].href;
+                    links[0].click();
                   }
                 }
               }

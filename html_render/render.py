@@ -175,7 +175,7 @@ class RenderToHtml:
     def _render_a(self, parent: ET.Element, a_elem: AHtmlElement) -> ET.Element:
         href = getattr(a_elem, "href", "")
         proxi_href = self.link_creator.create_for_url(href)
-        a = ET.SubElement(parent, "a", attrib={"href": proxi_href})
+        a = ET.SubElement(parent, "a", attrib={"href": proxi_href, "data-raw-href": href})
         if hasattr(a_elem, "content") and a_elem.content:
             a.text = a_elem.content
         elif hasattr(a_elem, "children") and a_elem.children:
@@ -249,7 +249,7 @@ class RenderToHtml:
     def _render_input(self, parent: ET.Element, inp: Input) -> ET.Element:
         name = getattr(inp, "name", "")
         val = getattr(inp, "value", "")
-        attribs = {"type": "text", "name": name, "value": val}
+        attribs = {"type": "text", "name": name, "value": val, "class": "wml-input"}
         size = getattr(inp, "size", -1)
         if isinstance(size, int) and size > 0:
             attribs["size"] = str(size)
@@ -257,7 +257,7 @@ class RenderToHtml:
 
     def _render_select(self, parent: ET.Element, sel: dict) -> ET.Element:
         name = sel.get("name", "")
-        select_elem = ET.SubElement(parent, "select", attrib={"name": name})
+        select_elem = ET.SubElement(parent, "select", attrib={"name": name, "class": "wml-select"})
         options = sel.get("options", [])
         for opt in options:
             self._render_node(select_elem, opt)
@@ -302,7 +302,15 @@ class RenderToHtml:
     def _render_go(self, parent: ET.Element, go: GoElement) -> ET.Element:
         href = getattr(go, "href", "")
         proxi_href = self.link_creator.create_for_url(href)
-        a = ET.SubElement(parent, "a", attrib={"href": proxi_href, "class": "wml-action-go"})
+        attribs = {"href": proxi_href, "class": "wml-action-go", "data-raw-href": href}
+        
+        postfields = getattr(go, "postfields", [])
+        if postfields:
+            # Format: name1=val1;name2=val2
+            encoded_postfields = ";".join([f"{pf.name}={pf.value}" for pf in postfields if hasattr(pf, "name")])
+            attribs["data-postfields"] = encoded_postfields
+            
+        a = ET.SubElement(parent, "a", attrib=attribs)
         a.text = "Go"
         return a
 
